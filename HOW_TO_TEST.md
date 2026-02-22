@@ -3,8 +3,17 @@
 ## Prerequisites
 
 ```bash
-pip install -r requirements.txt   # anthropic, python-docx
-export ANTHROPIC_API_KEY=<your-key>
+pip install -r requirements.txt   # anthropic, python-docx, python-dotenv
+
+cp .env.example .env
+# edit .env and set:  ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Verify the key is loaded correctly before running anything that calls Claude:
+
+```bash
+python tests/check_env.py
+# ANTHROPIC_API_KEY: sk-ant-...  PASS
 ```
 
 ---
@@ -12,58 +21,38 @@ export ANTHROPIC_API_KEY=<your-key>
 ## 1 — DB Layer
 
 ```bash
-cd release-note-agent
-
-# Tables created, no error
-python -c "import db; db.init_db(); print('OK')"
-
-# Seed test data
-python -c "
-import db
-db.create_defect('Login crashes on Safari',  '2024-01-15', 'Fixed null pointer', 'v1.0', 'RESOLVED')
-db.create_defect('Tooltip not showing',       '2024-01-16', 'Updated z-index',    'v1.0', 'RESOLVED')
-db.create_defect('Password reset delayed',    '2024-01-17', '',                   'v1.0', 'OPEN')
-print(db.get_all_defects())
-"
+python tests/test_db.py
 ```
 
-Expected: 3 rows, 2 RESOLVED + 1 OPEN for label `v1.0`.
+Expected:
+```
+=== DB Layer ===
+init_db:                  PASS
+create_defect:            PASS
+get_all_defects:          PASS
+get_resolved_defects:     PASS  (2 rows)
+update_defect_status:     PASS
+get_release_info (miss):  PASS
+
+All DB tests passed.
+```
 
 ---
 
 ## 2 — Doc Generator
 
 ```bash
-# Create doc — should produce release_notes_v1.0.docx with 2 data rows
-python -c "
-import doc_generator
-from docx import Document
-path = doc_generator.create_doc('v1.0')
-doc  = Document(path)
-rows = doc.tables[0].rows
-print(f'Rows (incl. header): {len(rows)}')   # expect 3
-assert len(rows) == 3, 'Expected 2 data rows + 1 header'
-print('create_doc: PASS')
-"
+python tests/test_doc.py
+```
 
-# Remove a row — doc should shrink to 1 data row
-python -c "
-import doc_generator
-from docx import Document
-doc_generator.remove_row('v1.0', 1)
-doc  = Document('release_notes_v1.0.docx')
-rows = doc.tables[0].rows
-print(f'Rows after removal: {len(rows)}')   # expect 2
-assert len(rows) == 2, 'Expected 1 data row + 1 header'
-print('remove_row: PASS')
-"
+Expected:
+```
+=== Doc Generator ===
+create_doc:          PASS  (2 data rows + header)
+remove_row:          PASS  (row <n> gone, 1 data rows remain)
+remove_row (no-op):  PASS
 
-# No-op when file does not exist (should not raise)
-python -c "
-import doc_generator
-doc_generator.remove_row('does-not-exist', 999)
-print('remove_row no-op: PASS')
-"
+All doc generator tests passed.
 ```
 
 ---
@@ -77,29 +66,27 @@ python server.py
 # → Release Note Manager running at http://localhost:8080
 ```
 
-In a second terminal (or browser):
+In a second terminal:
 
 ```bash
-# GET all defects
-curl http://localhost:8080/api/defects | python -m json.tool
-
-# POST — create a defect
-curl -s -X POST http://localhost:8080/api/defects \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"Test defect","date":"2024-02-01","label":"v1.0","status":"OPEN","developer_comment":""}' \
-  | python -m json.tool        # expect {"id": <n>}
-
-# PATCH — resolve it  (replace <id> with the returned id)
-curl -s -X PATCH http://localhost:8080/api/defects/<id> \
-  -H 'Content-Type: application/json' \
-  -d '{"status":"RESOLVED"}' \
-  | python -m json.tool        # expect {"id": <n>, "status": "RESOLVED"}
-
-# UI — opens in browser
-open http://localhost:8080
+python tests/test_server.py
 ```
 
-Verify in the browser:
+Expected:
+```
+=== HTTP Server  (http://localhost:8080) ===
+GET  /api/defects:          PASS  (<n> defects)
+POST /api/defects:          PASS  (id=<n>)
+PATCH /api/defects/<n>:     PASS  (status=RESOLVED)
+GET  /:                     PASS  (UI served)
+
+All server tests passed.
+```
+
+Open the UI manually and verify:
+```bash
+open http://localhost:8080
+```
 - Table renders all defects with colour-coded badges
 - "Resolve" button turns badge green; "Revert" turns it orange
 - Table auto-refreshes every 8 s
@@ -107,6 +94,9 @@ Verify in the browser:
 ---
 
 ## 4 — Agent (conversational loop + polling)
+
+> The agent reads `ANTHROPIC_API_KEY` from `.env` via python-dotenv.
+> Run `python tests/check_env.py` first if you haven't already.
 
 Open two terminals.
 
@@ -136,7 +126,12 @@ With the agent still running in Terminal A:
 **Terminal B — revert a RESOLVED defect to OPEN:**
 
 ```bash
-python -c "import db; db.update_defect_status(2, 'OPEN')"
+python tests/revert_defect.py 2
+```
+
+Expected output:
+```
+Defect 2 → OPEN
 ```
 
 Within `--poll` seconds Terminal A should print:

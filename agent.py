@@ -14,6 +14,9 @@ import argparse
 import sys
 import re
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import anthropic
 import db
 import doc_generator
@@ -66,10 +69,13 @@ def poll_loop(interval: int) -> None:
                         with doc_lock:
                             doc_generator.remove_row(label, defect_id)
                         print(
-                            f"[POLL] Row {defect_id} removed from "
-                            f"release_notes_{label}.docx",
+                            f"[POLL] Defect {defect_id} removed. "
+                            f"Regenerating release notes for '{label}'...",
                             flush=True,
                         )
+                        with doc_lock:
+                            path = doc_generator.create_doc(label)
+                        print(f"[POLL] Regenerated → {path}", flush=True)
 
             status_cache.update(current)
         except Exception as exc:
