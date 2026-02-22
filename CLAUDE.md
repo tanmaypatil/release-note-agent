@@ -32,7 +32,12 @@ we will use sqlite database
 * Release build no will be stored in release_info table.
 
 
-### User interface 
-User interface would be pure html . 
+### User interface
+User interface would be pure html .
 User can create and update defects and the defects will get updated in sqllite database.
 
+## Test documentation
+HOW_TO_TEST.md must stay in sync with the code.
+Whenever you change db.py, agent.py, doc_generator.py, server.py, or ui/index.html
+in a meaningful way (new function, changed signature, new endpoint, new CLI flag,
+changed action token), run /update-test-docs afterwards to regenerate HOW_TO_TEST.md.

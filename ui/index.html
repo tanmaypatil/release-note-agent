@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Release Note Manager</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f4f8;
+    color: #2d3748;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: #4a90d9;
+    color: #fff;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+  }
+  header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: .3px;
+  }
+
+  /* ── Layout ── */
+  main {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(74,144,217,.12);
+    padding: 24px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #4a90d9;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  /* ── Form ── */
+  .form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 140px;
+  }
+  .field label {
+    font-size: .78rem;
+    font-weight: 500;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  input, select, textarea {
+    border: 1.5px solid #cbd5e0;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: .9rem;
+    color: #2d3748;
+    background: #f7fafc;
+    transition: border-color .15s;
+    outline: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #4a90d9;
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 38px; }
+  .field--wide { flex: 2 1 240px; }
+
+  /* ── Buttons ── */
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: .88rem;
+    font-weight: 600;
+    padding: 8px 18px;
+    transition: opacity .15s, transform .08s;
+  }
+  button:active { transform: scale(.97); }
+  .btn-primary {
+    background: #4a90d9;
+    color: #fff;
+    align-self: flex-end;
+  }
+  .btn-primary:hover { opacity: .88; }
+  .btn-resolve {
+    background: #48bb78;
+    color: #fff;
+    padding: 5px 12px;
+    font-size: .8rem;
+  }
+  .btn-revert {
+    background: #ed8936;
+    color: #fff;
+    padding: 5px 12px;
+    font-size: .8rem;
+  }
+  .btn-resolve:hover, .btn-revert:hover { opacity: .85; }
+
+  /* ── Table ── */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+  }
+  thead th {
+    background: #ebf4ff;
+    color: #2b6cb0;
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: .75rem;
+    letter-spacing: .5px;
+    border-bottom: 2px solid #bee3f8;
+  }
+  tbody tr {
+    border-bottom: 1px solid #e2e8f0;
+    transition: background .1s;
+  }
+  tbody tr:hover { background: #f7fafc; }
+  tbody td {
+    padding: 9px 12px;
+    vertical-align: middle;
+  }
+
+  /* ── Status badge ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+  }
+  .badge-open     { background: #fed7d7; color: #c53030; }
+  .badge-resolved { background: #c6f6d5; color: #276749; }
+
+  /* ── Footer note ── */
+  .footer-note {
+    text-align: center;
+    font-size: .78rem;
+    color: #a0aec0;
+    padding-bottom: 8px;
+  }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    color: #a0aec0;
+    padding: 32px 0;
+    font-size: .92rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Release Note Manager</h1>
+</header>
+
+<main>
+
+  <!-- Create Defect -->
+  <section class="card">
+    <h2>Create Defect</h2>
+    <div class="form-row">
+      <div class="field field--wide">
+        <label>Title</label>
+        <input type="text" id="f-title" placeholder="Short description of the defect">
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label>Label</label>
+        <input type="text" id="f-label" placeholder="e.g. v1.0">
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="OPEN">OPEN</option>
+          <option value="RESOLVED">RESOLVED</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <div class="field field--wide">
+        <label>Developer Comment</label>
+        <textarea id="f-comment" placeholder="Optional comment"></textarea>
+      </div>
+      <button class="btn-primary" onclick="createDefect()">Add Defect</button>
+    </div>
+  </section>
+
+  <!-- Defects Table -->
+  <section class="card">
+    <h2>Defects</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Date</th>
+            <th>Label</th>
+            <th>Comment</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="defects-tbody">
+          <tr><td colspan="7" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="footer-note">Auto-refreshes every 8 s</p>
+
+</main>
+
+<script>
+  const API = 'http://localhost:8080/api/defects';
+
+  // ── Set today's date as default ──────────────────────────────────────
+  document.getElementById('f-date').valueAsDate = new Date();
+
+  // ── Load & render defects ────────────────────────────────────────────
+  async function loadDefects() {
+    try {
+      const res = await fetch(API);
+      const defects = await res.json();
+      renderTable(defects);
+    } catch (e) {
+      document.getElementById('defects-tbody').innerHTML =
+        '<tr><td colspan="7" class="empty">Could not reach the server.</td></tr>';
+    }
+  }
+
+  function renderTable(defects) {
+    const tbody = document.getElementById('defects-tbody');
+    if (!defects.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">No defects yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = defects.map(d => {
+      const badgeClass = d.status === 'RESOLVED' ? 'badge-resolved' : 'badge-open';
+      const actionBtn = d.status === 'OPEN'
+        ? `<button class="btn-resolve" onclick="updateStatus(${d.id},'RESOLVED')">Resolve</button>`
+        : `<button class="btn-revert"  onclick="updateStatus(${d.id},'OPEN')">Revert</button>`;
+      return `
+        <tr>
+          <td>${d.id}</td>
+          <td>${esc(d.title)}</td>
+          <td>${esc(d.date)}</td>
+          <td>${esc(d.label)}</td>
+          <td>${esc(d.developer_comment || '')}</td>
+          <td><span class="badge ${badgeClass}">${d.status}</span></td>
+          <td>${actionBtn}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ── Create defect ─────────────────────────────────────────────────────
+  async function createDefect() {
+    const title   = document.getElementById('f-title').value.trim();
+    const date    = document.getElementById('f-date').value;
+    const label   = document.getElementById('f-label').value.trim();
+    const status  = document.getElementById('f-status').value;
+    const comment = document.getElementById('f-comment').value.trim();
+
+    if (!title || !date || !label) {
+      alert('Title, Date and Label are required.');
+      return;
+    }
+
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, date, label, status, developer_comment: comment }),
+    });
+
+    // Clear form
+    document.getElementById('f-title').value   = '';
+    document.getElementById('f-comment').value = '';
+    document.getElementById('f-label').value   = '';
+    document.getElementById('f-date').valueAsDate = new Date();
+    document.getElementById('f-status').value  = 'OPEN';
+
+    await loadDefects();
+  }
+
+  // ── Update status ─────────────────────────────────────────────────────
+  async function updateStatus(id, status) {
+    await fetch(`${API}/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    await loadDefects();
+  }
+
+  // ── Escape HTML ───────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  // ── Auto-refresh ──────────────────────────────────────────────────────
+  loadDefects();
+  setInterval(loadDefects, 8000);
+</script>
+</body>
+</html>
